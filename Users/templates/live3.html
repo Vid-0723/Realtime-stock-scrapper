@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Live Time</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
+        <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <link rel="stylesheet" href="live3.css" />
+  </head>
+  <body>
+    <h1>Current Time:</h1>
+    <p id="company"></p>
+    :
+    <p id="price"></p>
+
+    <div id="priceChart"></div>
+
+    <script>
+      console.log(window.location.host);
+      const socket = new WebSocket("ws://" + window.location.host + "/ws/sc/");
+
+      const priceData = [];
+
+      socket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+
+        document.getElementById("price").innerText = data.price;
+        document.getElementById("company").innerText = data.company;
+        // console.log("From priceData",priceData[priceData.length-1].y )
+        console.log(data.price)
+        console.log(priceData)
+        if (priceData.length==0 || priceData[priceData.length-1][1] != data.price )
+        {
+        priceData.push([  new Date(), data.price ]);
+        renderChart();
+      }
+      };
+
+      (async () => {
+
+
+
+Highcharts.stockChart('container', {
+
+    title: {
+        text: 'Navigator mask is outside zoomed range'
+    },
+
+    navigator: {
+        maskInside: false
+    },
+
+    rangeSelector: {
+        selected: 4
+    },
+
+    series: [{
+        name: 'USD to EUR',
+        data: priceData
+    }]
+});
+})();
+        // renderChart();
+    </script>
+
+  </body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Live Time</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    {% load static %} <link rel="stylesheet" href={% static "live2.css" %} />
+  </head>
+  <body style="background: linear-gradient(to right, #ffafbd, #ffc3a0)">
+    <header>
+      <h1>Live Stock Price Chart</h1>
+      <button id="getStockButton">Get All Stock</button>
+
+      
+<div id="stockList"  style="display: none; max-height: 200px; overflow-y: auto;">
+  {% for stock in stocks %}
+      <p>{{ stock }}</p>
+  {% endfor %}
+</div>
+
+<script>
+  document.getElementById('getStockButton').addEventListener('click', function() {
+      var stockListDiv = document.getElementById('stockList');
+      if (stockListDiv.style.display === 'none'){
+      stockListDiv.style.display = 'block';
+      }
+      else{
+      stockListDiv.style.display = 'none';
+
+      }
+  });
+</script>
+    </header>
+    <main>
+      <aside class="sidebar">
+        <h2>Stock Information</h2>
+        <!-- <div class="stock-info" >
+          <p><strong>Company:</strong> <span id="company"></span></p>
+          <p><strong>Price:</strong> $<span id="price"></span></p>
+        </div> -->
+      </aside>
+      <section class="chart-section">
+        <div id="priceChart"></div>
+      </section>
+    </main>
+
+    <script>
+      const socket = new WebSocket("ws://" + window.location.host + "/ws/sc/");
+
+      const priceData = {};
+      let companyName;
+
+      socket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        const sidebar = document.querySelector(".sidebar");
+        sidebar.innerHTML = "";
+
+        function handleClick(event) {
+          companyName = event.currentTarget.getAttribute("data-company");
+          // Perform actions with the company name (e.g., send it to the chart series)
+          renderChart(companyName);
+        } 
+        for (let i = 0; i < data.length; i++) {
+          const stockInfoDiv = document.createElement("div");
+          stockInfoDiv.classList.add("stock-info");
+          stockInfoDiv.setAttribute("data-company", data[i].company);
+          stockInfoDiv.addEventListener("click", handleClick);
+          const companyParagraph = document.createElement("p");
+          const companyStrong = document.createElement("strong");
+          companyStrong.textContent = "Company: ";
+          const companySpan = document.createElement("span");
+          companySpan.textContent = data[i].company;
+          companyParagraph.appendChild(companyStrong);
+          companyParagraph.appendChild(companySpan);
+          stockInfoDiv.appendChild(companyParagraph);
+
+          const priceParagraph = document.createElement("p");
+          const priceStrong = document.createElement("strong");
+          priceStrong.textContent = "Price: $";
+          const priceSpan = document.createElement("span");
+          priceSpan.textContent = data[i].price;
+          priceParagraph.appendChild(priceStrong);
+          priceParagraph.appendChild(priceSpan);
+          stockInfoDiv.appendChild(priceParagraph);
+
+          document.querySelector(".sidebar").appendChild(stockInfoDiv);
+
+
+          // if (priceData[data[i].company].length==0 || priceData[data[i].company][priceData[data[i].company].length-1].y != data[i].price )
+          // {
+          // priceData[data[i].company].push({ x: new Date(), y: data[i].price });
+          // }
+
+          if (
+            !priceData[data[i].company] ||
+            priceData[data[i].company].length === 0
+          ) {
+            // If priceData[data[i].company] is empty or undefined, initialize it with an array
+            priceData[data[i].company] = [{ x: new Date(), y: data[i].price }];
+          } else if (
+            priceData[data[i].company][priceData[data[i].company].length - 1]
+              .y !== data[i].price
+          ) {
+            // If not empty, push new data only if the last entry's price is different from the current price
+            priceData[data[i].company].push({
+              x: new Date(),
+              y: data[i].price,
+            });
+          }
+        }
+        renderChart(companyName);
+        // document.getElementById("price1").innerText = data[0].price;
+        // document.getElementById("company1").innerText = data[0].company;
+
+        // document.g etElementById("price2").innerText = data[1].price;
+        // document.getElementById("company2").innerText = data[1].company;
+      };
+
+      function renderChart(companyName) {
+
+        Highcharts.chart("priceChart", {
+          //   chart: {
+          //     zoomType: "x",
+          //   },
+          title: {
+            text: companyName,
+          },
+
+          xAxis: {
+            type: "datetime",
+            breaks: [
+              {
+                // Nights
+                from: Date.UTC(2011, 9, 6, 16),
+                to: Date.UTC(2011, 9, 7, 8),
+                repeat: 24 * 36e5,
+              },
+              {
+                // Weekends
+                from: Date.UTC(2011, 9, 7, 16),
+                to: Date.UTC(2011, 9, 10, 8),
+                repeat: 7 * 24 * 36e5,
+              },
+            ],
+          },
+
+          rangeSelector: {
+            buttons: [
+              {
+                type: "hour",
+                count: 1,
+                text: "1h",
+              },
+              {
+                type: "day",
+                count: 1,
+                text: "1D",
+              },
+              {
+                type: "all",
+                count: 1,
+                text: "All",
+              },
+            ],
+            selected: 1,
+            inputEnabled: false,
+          },
+
+          //   yAxis: {
+          //     title: {
+          //       text: "Price",
+          //     },
+          //   },
+          //   legend: {
+          //     enabled: false,
+          //   },
+
+          plotOptions: {
+            series: {
+              animation: false,
+            },
+            //     area: {
+            //       fillColor: {
+            //         linearGradient: {
+            //           x1: 0,
+            //           y1: 0,
+            //           x2: 0,
+            //           y2: 1,
+            //         },
+            //         stops: [
+            //           [0, Highcharts.getOptions().colors[0]],
+            //           [
+            //             1,
+            //             Highcharts.color(Highcharts.getOptions().colors[0])
+            //               .setOpacity(0)
+            //               .get("rgba"),
+            //           ],
+            //         ],
+            //       },
+            //       marker: {
+            //         radius: 2,
+            //       },
+            //       lineWidth: 1,
+            //       states: {
+            //         hover: {
+            //           lineWidth: 1,
+            //         },
+            //       },
+            //       threshold: null,
+            //     },
+          },
+
+          series: [
+            {
+              type: "area",
+              name: "Price",
+              data: priceData[companyName], //.map((point) => [point.x.getTime(), point.y]),
+              gapSize: 5,
+              tooltip: {
+                valueDecimals: 2,
+              },
+              fillColor: {
+                linearGradient: {
+                  x1: 0,
+                  y1: 0,
+                  x2: 0,
+                  y2: 1,
+                },
+                stops: [
+                  [0, Highcharts.getOptions().colors[0]],
+                  [
+                    1,
+                    Highcharts.color(Highcharts.getOptions().colors[0])
+                      .setOpacity(0)
+                      .get("rgba"),
+                  ],
+                ],
+              },
+              threshold: null,
+            },
+          ],
+        });
+      }
+      //   renderChart();
+    </script>
+  </body>
+</html>

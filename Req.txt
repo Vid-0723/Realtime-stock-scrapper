@@ -1,0 +1,13 @@
+channels==4.0.0
+channels-redis==4.1.0
+cryptography==40.0.1
+daphne==4.0.0
+Django==4.2
+django-cors-headers==3.14.0
+djangorestframework==3.14.0
+pytz==2023.3
+redis==4.5.4
+yfinance==0.2.33
+beautifulsoup4
+pandas
+python-dotenv

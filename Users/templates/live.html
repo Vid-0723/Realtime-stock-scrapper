@@ -1,0 +1,418 @@
+<!-- <!DOCTYPE html>
+<html>
+  <head>
+    <title>Live Time</title>
+    <link rel="stylesheet" type="text/css" href="https://code.highcharts.com/css/annotations/popup.css">
+
+
+    <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    
+    <script src="https://code.highcharts.com/stock/modules/drag-panes.js"></script>
+    
+    <script src="https://code.highcharts.com/stock/indicators/indicators.js"></script>
+    <script src="https://code.highcharts.com/stock/indicators/bollinger-bands.js"></script>
+    <script src="https://code.highcharts.com/stock/indicators/ema.js"></script>
+    
+    <script src="https://code.highcharts.com/stock/modules/annotations-advanced.js"></script>
+    
+    <script src="https://code.highcharts.com/stock/modules/full-screen.js"></script>
+    <script src="https://code.highcharts.com/stock/modules/price-indicator.js"></script>
+    <script src="https://code.highcharts.com/stock/modules/stock-tools.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <link rel="stylesheet" href="live.css" />
+  </head>
+  <body>
+
+      <div id="container" class="chart"></div>
+    </div>
+    <h1>Current Time:</h1>
+    <p id="company"></p>
+    :
+    <p id="price"></p>
+
+    <div id="priceChart"></div>
+
+    <script>
+      console.log(window.location.host);
+      const socket = new WebSocket("ws://" + window.location.host + "/ws/sc/");
+
+      const priceData = [];
+
+      socket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+
+        document.getElementById("price").innerText = data.price;
+        document.getElementById("company").innerText = data.company;
+
+        priceData.push({ x: new Date(), y: data.price });
+
+        renderChart();
+      };
+      (async () => {
+
+function addPopupEvents(chart) {
+    const closePopupButtons = document.getElementsByClassName('highcharts-close-popup');
+    // Close popup button:
+    Highcharts.addEvent(
+        closePopupButtons[0],
+        'click',
+        function () {
+            this.parentNode.style.display = 'none';
+        }
+    );
+
+    Highcharts.addEvent(
+        closePopupButtons[1],
+        'click',
+        function () {
+            this.parentNode.style.display = 'none';
+        }
+    );
+
+    // Add an indicator from popup
+    Highcharts.addEvent(
+        document.querySelectorAll('.highcharts-popup-indicators button')[0],
+        'click',
+        function () {
+            const typeSelect = document.querySelectorAll(
+                    '.highcharts-popup-indicators select'
+                )[0],
+                type = typeSelect.options[typeSelect.selectedIndex].value,
+                period = document.querySelectorAll(
+                    '.highcharts-popup-indicators input'
+                )[0].value || 14;
+
+            chart.addSeries({
+                linkedTo: 'aapl-ohlc',
+                type: type,
+                params: {
+                    period: parseInt(period, 10)
+                }
+            });
+
+            chart.stockToolbar.indicatorsPopupContainer.style.display = 'none';
+        }
+    );
+
+    // Update an annotaiton from popup
+    Highcharts.addEvent(
+        document.querySelectorAll('.highcharts-popup-annotations button')[0],
+        'click',
+        function () {
+            const strokeWidth = parseInt(
+                    document.querySelectorAll(
+                        '.highcharts-popup-annotations input[name="stroke-width"]'
+                    )[0].value,
+                    10
+                ),
+                strokeColor = document.querySelectorAll(
+                    '.highcharts-popup-annotations input[name="stroke"]'
+                )[0].value;
+
+            // Stock/advanced annotations have common options under typeOptions
+            if (chart.currentAnnotation.options.typeOptions) {
+                chart.currentAnnotation.update({
+                    typeOptions: {
+                        lineColor: strokeColor,
+                        lineWidth: strokeWidth,
+                        line: {
+                            strokeWidth: strokeWidth,
+                            stroke: strokeColor
+                        },
+                        background: {
+                            strokeWidth: strokeWidth,
+                            stroke: strokeColor
+                        },
+                        innerBackground: {
+                            strokeWidth: strokeWidth,
+                            stroke: strokeColor
+                        },
+                        outerBackground: {
+                            strokeWidth: strokeWidth,
+                            stroke: strokeColor
+                        },
+                        connector: {
+                            strokeWidth: strokeWidth,
+                            stroke: strokeColor
+                        }
+                    }
+                });
+            } else {
+            // Basic annotations:
+                chart.currentAnnotation.update({
+                    shapes: [{
+                        'stroke-width': strokeWidth,
+                        stroke: strokeColor
+                    }],
+                    labels: [{
+                        borderWidth: strokeWidth,
+                        borderColor: strokeColor
+                    }]
+                });
+            }
+            chart.stockToolbar.annotationsPopupContainer.style.display = 'none';
+        }
+    );
+}
+
+// Load the dataset
+const data = await fetch(
+    'https://demo-live-data.highcharts.com/aapl-ohlcv.json'
+).then(response => response.json());
+
+// split the data set into ohlc and volume
+const ohlc = [],
+    volume = [],
+    dataLength = data.length;
+
+for (let i = 0; i < dataLength; i += 1) {
+    ohlc.push([
+        // data[i][0], // the date
+        // data[i][1], // open
+        // data[i][2], // high
+        // data[i][3], // low
+        data[i][4] // close
+    ]);
+
+    volume.push([
+        data[i][0], // the date
+        data[i][5] // the volume
+    ]);
+}
+
+Highcharts.stockChart('container', {
+    chart: {
+        events: {
+            load: function () {
+                addPopupEvents(this);
+            }
+        }
+    },
+    yAxis: [{
+        labels: {
+            align: 'left'
+        },
+        height: '80%',
+        resize: {
+            enabled: true
+        }
+    }, {
+        labels: {
+            align: 'left'
+        },
+        top: '80%',
+        height: '20%',
+        offset: 0
+    }],
+    navigationBindings: {
+        events: {
+            selectButton: function (event) {
+                let newClassName = event.button.className + ' highcharts-active';
+                const topButton = event.button.parentNode.parentNode;
+
+                if (topButton.classList.contains('right')) {
+                    newClassName += ' right';
+                }
+
+                // If this is a button with sub buttons,
+                // change main icon to the current one:
+                if (!topButton.classList.contains('highcharts-menu-wrapper')) {
+                    topButton.className = newClassName;
+                }
+
+                // Store info about active button:
+                this.chart.activeButton = event.button;
+            },
+            deselectButton: function (event) {
+                event.button.parentNode.parentNode.classList.remove('highcharts-active');
+
+                // Remove info about active button:
+                this.chart.activeButton = null;
+            },
+            showPopup: function (event) {
+
+                if (!this.indicatorsPopupContainer) {
+                    this.indicatorsPopupContainer = document
+                        .getElementsByClassName('highcharts-popup-indicators')[0];
+                }
+
+                if (!this.annotationsPopupContainer) {
+                    this.annotationsPopupContainer = document
+                        .getElementsByClassName('highcharts-popup-annotations')[0];
+                }
+
+                if (event.formType === 'indicators') {
+                    this.indicatorsPopupContainer.style.display = 'block';
+                } else if (event.formType === 'annotation-toolbar') {
+                    // If user is still adding an annotation, don't show popup:
+                    if (!this.chart.activeButton) {
+                        this.chart.currentAnnotation = event.annotation;
+                        this.annotationsPopupContainer.style.display = 'block';
+                    }
+                }
+
+            },
+            closePopup: function () {
+                this.indicatorsPopupContainer.style.display = 'none';
+                this.annotationsPopupContainer.style.display = 'none';
+            }
+        }
+    },
+    stockTools: {
+        gui: {
+            enabled: false
+        }
+    },
+    series: [{
+        type: 'ohlc',
+        id: 'aapl-ohlc',
+        name: 'AAPL Stock Price',
+        data: ohlc
+    }, {
+        type: 'column',
+        id: 'aapl-volume',
+        name: 'AAPL Volume',
+        data: volume,
+        yAxis: 1
+    }],
+    responsive: {
+        rules: [{
+            condition: {
+                maxWidth: 800
+            },
+            chartOptions: {
+                rangeSelector: {
+                    inputEnabled: false
+                }
+            }
+        }]
+    }
+});
+})();
+      //   Highcharts.chart("priceChart", {
+      //     //   chart: {
+      //     //     zoomType: "x",
+      //     //   },
+      //     title: {
+      //       text: "Logarithmic axis demo",
+      //     },
+
+      //     xAxis: {
+      //       // type: "datetime",
+      //       breaks: [
+      //         {
+      //           // Nights
+      //           from: Date.UTC(2011, 9, 6, 16),
+      //           to: Date.UTC(2011, 9, 7, 8),
+      //           repeat: 24 * 36e5,
+      //         },
+      //         {
+      //           // Weekends
+      //           from: Date.UTC(2011, 9, 7, 16),
+      //           to: Date.UTC(2011, 9, 10, 8),
+      //           repeat: 7 * 24 * 36e5,
+      //         },
+      //       ],
+      //     },
+
+      //     rangeSelector: {
+      //       buttons: [
+      //         {
+      //           type: "hour",
+      //           count: 1,
+      //           text: "1h",
+      //         },
+      //         {
+      //           type: "day",
+      //           count: 1,
+      //           text: "1D",
+      //         },
+      //         {
+      //           type: "all",
+      //           count: 1,
+      //           text: "All",
+      //         },
+      //       ],
+      //       selected: 1,
+      //       inputEnabled: false,
+      //     },
+
+      //     //   yAxis: {
+      //     //     title: {
+      //     //       text: "Price",
+      //     //     },
+      //     //   },
+      //     //   legend: {
+      //     //     enabled: false,
+      //     //   },
+
+      //     //   plotOptions: {
+      //     //     series: {
+      //     //       animation: false,
+      //     //     },
+      //     //     area: {
+      //     //       fillColor: {
+      //     //         linearGradient: {
+      //     //           x1: 0,
+      //     //           y1: 0,
+      //     //           x2: 0,
+      //     //           y2: 1,
+      //     //         },
+      //     //         stops: [
+      //     //           [0, Highcharts.getOptions().colors[0]],
+      //     //           [
+      //     //             1,
+      //     //             Highcharts.color(Highcharts.getOptions().colors[0])
+      //     //               .setOpacity(0)
+      //     //               .get("rgba"),
+      //     //           ],
+      //     //         ],
+      //     //       },
+      //     //       marker: {
+      //     //         radius: 2,
+      //     //       },
+      //     //       lineWidth: 1,
+      //     //       states: {
+      //     //         hover: {
+      //     //           lineWidth: 1,
+      //     //         },
+      //     //       },
+      //     //       threshold: null,
+      //     //     },
+      //     //   },
+
+      //     series: [
+      //       {
+      //         type: "area",
+      //         name: "Price",
+      //         data: priceData, //.map((point) => [point.x.getTime(), point.y]),
+      //         gapSize: 5,
+      //         tooltip: {
+      //           valueDecimals: 2,
+      //         },
+      //         fillColor: {
+      //           linearGradient: {
+      //             x1: 0,
+      //             y1: 0,
+      //             x2: 0,
+      //             y2: 1,
+      //           },
+      //           stops: [
+      //             [0, Highcharts.getOptions().colors[0]],
+      //             [
+      //               1,
+      //               Highcharts.color(Highcharts.getOptions().colors[0])
+      //                 .setOpacity(0)
+      //                 .get("rgba"),
+      //             ],
+      //           ],
+      //         },
+      //         threshold: null,
+      //       },
+      //     ],
+      //   });
+      // }
+      //   renderChart();
+    </script>
+  </body>
+</html> -->
